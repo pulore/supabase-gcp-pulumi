@@ -1,0 +1,31 @@
+# Type-checks and runs the unit tests. The tests use Pulumi's runtime mocks,
+# so nothing is deployed and no cloud credentials or secrets are needed.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # package.json: "engines": { "node": ">=22" }
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run build
+
+      - name: Test
+        run: npm test

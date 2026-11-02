@@ -1,0 +1,44 @@
+# Copy to Pulumi.<stack>.yaml (for example Pulumi.dev.yaml), or set the same
+# keys with `pulumi config set`. See "Configuration" in the README for every key.
+config:
+  # Google Cloud project, region, and the zone for the VPN VM.
+  gcp:project: my-gcp-project
+  gcp:region: europe-west2
+  gcp:zone: europe-west2-a
+
+  # Required. Studio is served on this hostname. After the first deploy, point
+  # an A record at the `studioIpAddress` output.
+  supabase-gcp:domain: studio.example.com
+
+  # small, production-4vcpu or production. See "Presets" in the README.
+  supabase-gcp:preset: small
+
+  # Everything below is optional.
+
+  # Resource name prefix. Default: supabase-<stack name>.
+  # supabase-gcp:namePrefix: supabase-dev
+
+  # supabase-gcp:subnetCidr: 10.0.1.0/24
+
+  # Override single preset fields.
+  # supabase-gcp:database:
+  #   tier: db-custom-2-7680
+  #   backupLocation: europe-west2
+  #   deletionProtection: true
+  # supabase-gcp:studio:
+  #   organizationName: Acme
+  #   projectName: Production
+  #   zones:
+  #     - europe-west2-a
+  #     - europe-west2-b
+  # supabase-gcp:vpn:
+  #   hostname: vpn.example.com
+  #   managementSourceRanges:
+  #     - 203.0.113.7/32
+
+  # Other ranges Cloud Armor lets through to Studio, besides the VPN.
+  # supabase-gcp:allowedSourceRanges:
+  #   - 198.51.100.0/24
+
+  # SSH to the VMs through Identity-Aware Proxy. Default: true.
+  # supabase-gcp:enableIapSsh: false

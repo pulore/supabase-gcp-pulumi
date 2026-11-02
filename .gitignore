@@ -1,0 +1,8 @@
+/node_modules/
+/bin/
+*.log
+.DS_Store
+
+# Stack config holds your project's details. Remove this line in your own
+# copy if you want to commit it; secret values in it are encrypted.
+Pulumi.*.yaml

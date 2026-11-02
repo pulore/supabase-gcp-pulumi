@@ -1,0 +1,6 @@
+name: supabase-gcp
+description: Supabase Studio and postgres-meta on Google Cloud, with Cloud SQL on a private IP, an Outline VPN and a Cloud Armor allowlist.
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
