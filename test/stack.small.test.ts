@@ -157,13 +157,23 @@ describe("Firewall rules", () => {
 });
 
 describe("Studio instance group", () => {
-  it("auto-heals with the HTTP health check", () => {
+  it("auto-heals with its own HTTP health check, slower than the load balancer's", () => {
     const mig = one(TYPES.mig);
-    const healthCheck = one(TYPES.healthCheck);
-    assert.equal(mig.inputs.autoHealingPolicies.healthCheck, healthCheck.id);
+    const autohealing = one(TYPES.healthCheck, "studio-autohealing-health-check");
+    const loadBalancing = one(TYPES.healthCheck, "studio-health-check");
+    assert.equal(mig.inputs.autoHealingPolicies.healthCheck, autohealing.id);
     assert.equal(mig.inputs.autoHealingPolicies.initialDelaySec, 300);
-    assert.equal(healthCheck.inputs.httpHealthCheck.port, STUDIO_HTTP_PORT);
-    assert.equal(healthCheck.inputs.httpHealthCheck.requestPath, HEALTH_CHECK_PATH);
+    for (const check of [autohealing, loadBalancing]) {
+      assert.equal(check.inputs.httpHealthCheck.port, STUDIO_HTTP_PORT);
+      assert.equal(check.inputs.httpHealthCheck.requestPath, HEALTH_CHECK_PATH);
+    }
+    // A rebooted VM takes about a minute to answer again. Auto-healing has
+    // to wait longer than that, or it recreates every VM that reboots.
+    const failureWindow = (check: RecordedResource) => check.inputs.checkIntervalSec * check.inputs.unhealthyThreshold;
+    assert.ok(failureWindow(autohealing) >= 90);
+    assert.ok(failureWindow(autohealing) > failureWindow(loadBalancing));
+    // The Compute Engine API rejects more than 10.
+    assert.ok(autohealing.inputs.unhealthyThreshold <= 10);
   });
 
   it("scales between the preset's minimum and maximum", () => {
@@ -185,11 +195,11 @@ describe("Studio instance group", () => {
     assert.ok(update.maxSurgeFixed >= 3);
   });
 
-  it("is the load balancer's only backend, behind the same health check", () => {
+  it("is the load balancer's only backend, behind the load-balancing health check", () => {
     const backend = one(TYPES.backendService);
     const mig = one(TYPES.mig);
     assert.equal(backend.inputs.loadBalancingScheme, "EXTERNAL_MANAGED");
-    assert.equal(backend.inputs.healthChecks, one(TYPES.healthCheck).id);
+    assert.equal(backend.inputs.healthChecks, one(TYPES.healthCheck, "studio-health-check").id);
     assert.equal(backend.inputs.backends.length, 1);
     assert.ok(backend.inputs.backends[0].group.endsWith(`/instanceGroups/${mig.inputs.name}`));
     assert.deepEqual(mig.inputs.namedPorts, [{ name: "http", port: STUDIO_HTTP_PORT }]);

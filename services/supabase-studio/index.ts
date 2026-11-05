@@ -68,6 +68,7 @@ export class SupabaseStudio extends pulumi.ComponentResource {
   public readonly cryptoKeySecret: ManagedSecret;
   public readonly securityPolicy: AllowlistPolicy;
   public readonly healthCheck: gcp.compute.HealthCheck;
+  public readonly autohealingHealthCheck: gcp.compute.HealthCheck;
   public readonly instanceTemplate: gcp.compute.InstanceTemplate;
   public readonly instanceGroupManager: gcp.compute.RegionInstanceGroupManager;
   public readonly autoscaler: gcp.compute.RegionAutoscaler;
@@ -142,8 +143,9 @@ export class SupabaseStudio extends pulumi.ComponentResource {
       { parent: this },
     );
 
-    // One health check for the load balancer and for auto-healing. It goes
-    // through nginx to Studio, so a VM whose proxy or Studio is down fails it.
+    // The load balancer's health check. It goes through nginx to Studio, so a
+    // VM whose proxy or Studio is down fails it and stops getting traffic
+    // within about 30 seconds.
     this.healthCheck = new gcp.compute.HealthCheck(
       `${name}-health-check`,
       {
@@ -152,6 +154,28 @@ export class SupabaseStudio extends pulumi.ComponentResource {
         timeoutSec: 5,
         healthyThreshold: 2,
         unhealthyThreshold: 3,
+        httpHealthCheck: {
+          port: STUDIO_HTTP_PORT,
+          requestPath: HEALTH_CHECK_PATH,
+        },
+      },
+      { parent: this },
+    );
+
+    // Auto-healing gets its own, slower check, as Google recommends. A
+    // rebooted Studio VM takes about a minute to answer again; with the
+    // load balancer's 30 seconds, the instance group would delete and
+    // recreate every VM that reboots instead of waiting for it. Two minutes
+    // of failures before a repair (the API allows at most 10 failed checks,
+    // so the checks are 20 seconds apart).
+    this.autohealingHealthCheck = new gcp.compute.HealthCheck(
+      `${name}-autohealing-health-check`,
+      {
+        name: `${resourceName}-autohealing-hc`,
+        checkIntervalSec: 20,
+        timeoutSec: 5,
+        healthyThreshold: 2,
+        unhealthyThreshold: 6,
         httpHealthCheck: {
           port: STUDIO_HTTP_PORT,
           requestPath: HEALTH_CHECK_PATH,
@@ -232,7 +256,7 @@ export class SupabaseStudio extends pulumi.ComponentResource {
         namedPorts: [{ name: "http", port: STUDIO_HTTP_PORT }],
         // No targetSize: the autoscaler below owns the group's size.
         autoHealingPolicies: {
-          healthCheck: this.healthCheck.id,
+          healthCheck: this.autohealingHealthCheck.id,
           // Time for the first boot: image pulls plus Studio starting.
           initialDelaySec: 300,
         },
