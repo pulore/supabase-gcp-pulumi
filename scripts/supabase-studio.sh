@@ -33,8 +33,17 @@ mkdir -p "${APP_DIR}/snippets"
 
 # Docker reads env files when a container is created; the values are not on
 # any command line.
+#
+# PGSSLMODE: Cloud SQL only accepts TLS connections (sslMode ENCRYPTED_ONLY).
+# Studio's connection string carries no SSL settings, so node-postgres in
+# postgres-meta falls back to PGSSLMODE for every connection, Studio's
+# included. "no-verify" encrypts without checking the server certificate.
+# Verifying it with PG_META_DB_SSL_ROOT_CERT fails: the certificate names
+# only the instance's <id>.<region>.sql.goog DNS name, and postgres-meta
+# connects to the private IP.
 cat >"${APP_DIR}/pg-meta.env" <<EOF
 PG_META_PORT=8080
+PGSSLMODE=no-verify
 PG_META_DB_HOST=${DB_HOST}
 PG_META_DB_PORT=${DB_PORT}
 PG_META_DB_NAME=${DB_NAME}

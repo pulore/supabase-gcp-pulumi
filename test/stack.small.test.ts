@@ -53,6 +53,13 @@ describe("Cloud SQL", () => {
     assert.equal(ip.authorizedNetworks, undefined);
   });
 
+  it("accepts only TLS connections, and postgres-meta connects with TLS", () => {
+    assert.equal(one(TYPES.sqlInstance).inputs.settings.ipConfiguration.sslMode, "ENCRYPTED_ONLY");
+    // Studio's connection string has no SSL settings; node-postgres then uses PGSSLMODE.
+    const script: string = one(TYPES.instanceTemplate).inputs.metadata["startup-script"];
+    assert.match(script, /^PGSSLMODE=no-verify$/m);
+  });
+
   it("keeps automated backups and point-in-time recovery on", () => {
     const backup = one(TYPES.sqlInstance).inputs.settings.backupConfiguration;
     assert.equal(backup.enabled, true);

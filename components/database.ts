@@ -82,11 +82,10 @@ export class Database extends pulumi.ComponentResource {
             ipv4Enabled: false,
             privateNetwork: args.network.id,
             enablePrivatePathForGoogleCloudServices: false,
-            // The API's default, set explicitly: postgres-meta connects
-            // without TLS (the connection string Studio sends has no SSL
-            // settings), so Studio would stop working if this ever became
-            // ENCRYPTED_ONLY. See "Security notes" in the README.
-            sslMode: "ALLOW_UNENCRYPTED_AND_ENCRYPTED",
+            // Refuse connections without TLS. postgres-meta, the only
+            // client, is set to use TLS (PGSSLMODE in
+            // scripts/supabase-studio.sh). See "Security notes" in the README.
+            sslMode: "ENCRYPTED_ONLY",
           },
 
           backupConfiguration: {
