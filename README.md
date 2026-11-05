@@ -311,6 +311,17 @@ cat scripts/common.sh scripts/supabase-studio.sh | shellcheck -s bash -
 cat scripts/common.sh scripts/outline-vpn.sh | shellcheck -s bash -
 ```
 
+### Test deploy
+
+On 5 November 2026 we deployed this program end to end with the `small` preset in europe-west2. `pulumi up` from an empty project created its 78 resources in under 13 minutes, Studio answered over HTTPS through the Outline VPN 21 minutes after `pulumi up` started (most of it waiting for Google's certificate), and `pulumi destroy` removed everything in about 7 minutes. On that deploy:
+
+- **Access:** Cloud Armor returned 403 to every address except the VPN's, including 180 probes from 22 scanner addresses in the first 40 minutes, and nginx asked for the password.
+- **Database:** Studio ran SQL on Cloud SQL's private IP through postgres-meta, over TLS, and row-level security kept two test users' rows apart.
+- **Restarts:** the VPN VM, a Studio VM and Cloud SQL each recovered from a restart.
+- **Updates:** the instance group rolled out a new template without dropping below capacity.
+
+The production presets, SSH through IAP, a custom domain and backup restore weren't part of that deploy.
+
 ## The blog series
 
 1. [Why We Self-Host Supabase on GCP (And How We Did It)](https://pulore.com/blog/self-hosting-supabase-gcp)
